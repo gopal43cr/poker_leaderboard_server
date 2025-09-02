@@ -9,26 +9,33 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// MongoDB connection
+// MongoDB connection with connection pooling
 const uri = process.env.MONGODB_URI;
-const client = new MongoClient(uri);
-let db;
+let client;
+let clientPromise;
 
-(async () => {
-  try {
-    await client.connect();
-    db = client.db(process.env.DATABASE_NAME);
-    console.log("✅ Connected to MongoDB");
-  } catch (err) {
-    console.error("❌ MongoDB connection error:", err);
-  }
-})();
+if (!global._mongoClientPromise) {
+  client = new MongoClient(uri, {
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+  });
+  global._mongoClientPromise = client.connect();
+}
+clientPromise = global._mongoClientPromise;
+
+// Helper function to get database
+async function getDatabase() {
+  const client = await clientPromise;
+  return client.db(process.env.DATABASE_NAME);
+}
 
 // ---------------- API Routes ----------------
 
 // Get all players
 app.get("/api/players", async (req, res) => {
   try {
+    const db = await getDatabase();
     const players = await db.collection("Players").find({}).toArray();
     res.json(players);
   } catch (error) {
@@ -40,6 +47,7 @@ app.get("/api/players", async (req, res) => {
 // Get recent sessions
 app.get("/api/sessions", async (req, res) => {
   try {
+    const db = await getDatabase();
     const sessions = await db
       .collection("Sessions")
       .find({})
@@ -62,6 +70,7 @@ app.post("/api/game", async (req, res) => {
       return res.status(400).json({ error: "All fields are required" });
     }
 
+    const db = await getDatabase();
     const gameAmount = result === "win" ? amount : -amount;
     const now = new Date();
 
@@ -119,7 +128,7 @@ app.post("/api/game", async (req, res) => {
     await db.collection("Sessions").insertOne(session);
 
     // Update leaderboard
-    await updateLeaderboard();
+    await updateLeaderboard(db);
 
     res.json({ success: true, message: "Game recorded successfully" });
   } catch (error) {
@@ -129,7 +138,7 @@ app.post("/api/game", async (req, res) => {
 });
 
 // Update leaderboard
-async function updateLeaderboard() {
+async function updateLeaderboard(db) {
   try {
     const players = await db.collection("Players").find({}).toArray();
 
@@ -163,8 +172,5 @@ app.get("/", (req, res) => {
   res.send("✅ Poker Leaderboard API is running!");
 });
 
-// Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-});
+// Export the Express app for Vercel
+export default app;
