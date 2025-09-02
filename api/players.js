@@ -1,6 +1,8 @@
-import { connectToDatabase } from '../lib/mongodb.js';
+const { connectToDatabase } = require('../lib/mongodb.js');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
+  console.log('🎯 Players API called:', req.method);
+  
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -15,11 +17,19 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('🔍 Connecting to database...');
     const db = await connectToDatabase();
+    
+    console.log('📊 Fetching players...');
     const players = await db.collection("Players").find({}).toArray();
+    
+    console.log(`✅ Found ${players.length} players`);
     res.status(200).json(players);
   } catch (error) {
-    console.error("Error fetching players:", error);
-    res.status(500).json({ error: "Failed to fetch players" });
+    console.error("❌ Error fetching players:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch players",
+      details: error.message 
+    });
   }
-}
+};

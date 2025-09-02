@@ -1,6 +1,6 @@
-import { connectToDatabase, updateLeaderboard } from '../lib/mongodb.js';
+const { connectToDatabase, updateLeaderboard } = require('../lib/mongodb.js');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -86,4 +86,4 @@ export default async function handler(req, res) {
     console.error("Error recording game:", error);
     res.status(500).json({ error: "Failed to record game" });
   }
-}
+};

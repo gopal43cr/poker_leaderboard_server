@@ -1,11 +1,10 @@
 {
   "name": "poker-leaderboard-api",
   "version": "1.0.0",
-  "type": "module",
+  "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "vercel dev",
-    "build": "echo 'No build step required'"
+    "dev": "vercel dev"
   },
   "dependencies": {
     "mongodb": "^6.0.0",
