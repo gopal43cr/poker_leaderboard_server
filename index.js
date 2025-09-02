@@ -26,20 +26,8 @@ clientPromise = global._mongoClientPromise;
 
 // Helper function to get database
 async function getDatabase() {
-  try {
-    const client = await clientPromise;
-    const dbName = process.env.DATABASE_NAME;
-    console.log("Connecting to database:", dbName);
-    
-    if (!dbName) {
-      throw new Error("DATABASE_NAME environment variable is not set");
-    }
-    
-    return client.db(dbName);
-  } catch (error) {
-    console.error("Database connection error:", error);
-    throw error;
-  }
+  const client = await clientPromise;
+  return client.db(process.env.DATABASE_NAME);
 }
 
 // ---------------- API Routes ----------------
@@ -47,51 +35,29 @@ async function getDatabase() {
 // Get all players
 app.get("/api/players", async (req, res) => {
   try {
-    console.log("Attempting to fetch players...");
     const db = await getDatabase();
-    console.log("Database connected, database name:", db.databaseName);
-    
-    // Check if collection exists
-    const collections = await db.listCollections().toArray();
-    console.log("Available collections:", collections.map(c => c.name));
-    
     const players = await db.collection("Players").find({}).toArray();
-    console.log("Players found:", players.length);
     res.json(players);
   } catch (error) {
     console.error("Error fetching players:", error);
-    console.error("Error details:", error.message);
-    res.status(500).json({ 
-      error: "Failed to fetch players",
-      details: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    res.status(500).json({ error: "Failed to fetch players" });
   }
 });
 
 // Get recent sessions
 app.get("/api/sessions", async (req, res) => {
   try {
-    console.log("Attempting to fetch sessions...");
     const db = await getDatabase();
-    console.log("Database connected for sessions");
-    
     const sessions = await db
       .collection("Sessions")
       .find({})
       .sort({ createdAt: -1 })
       .limit(50)
       .toArray();
-    console.log("Sessions found:", sessions.length);
     res.json(sessions);
   } catch (error) {
     console.error("Error fetching sessions:", error);
-    console.error("Error details:", error.message);
-    res.status(500).json({ 
-      error: "Failed to fetch sessions",
-      details: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    res.status(500).json({ error: "Failed to fetch sessions" });
   }
 });
 
@@ -204,58 +170,6 @@ async function updateLeaderboard(db) {
 // Home route
 app.get("/", (req, res) => {
   res.send("✅ Poker Leaderboard API is running!");
-});
-
-// Debug route to check database connection
-app.get("/api/debug", async (req, res) => {
-  try {
-    const client = await clientPromise;
-    const db = await getDatabase();
-    
-    // Test connection
-    await client.db("admin").command({ ping: 1 });
-    
-    // List all databases
-    const adminDb = client.db("admin");
-    const databases = await adminDb.admin().listDatabases();
-    
-    // List collections in your database
-    const collections = await db.listCollections().toArray();
-    
-    // Count documents in each collection
-    const collectionCounts = {};
-    for (const collection of collections) {
-      try {
-        collectionCounts[collection.name] = await db.collection(collection.name).countDocuments();
-      } catch (err) {
-        collectionCounts[collection.name] = `Error: ${err.message}`;
-      }
-    }
-    
-    res.json({
-      status: "Connected",
-      databaseName: db.databaseName,
-      availableDatabases: databases.databases.map(db => db.name),
-      collections: collections.map(c => c.name),
-      collectionCounts,
-      environment: {
-        NODE_ENV: process.env.NODE_ENV,
-        DATABASE_NAME: process.env.DATABASE_NAME,
-        MONGODB_URI: process.env.MONGODB_URI ? "Set" : "Not set"
-      }
-    });
-  } catch (error) {
-    console.error("Debug error:", error);
-    res.status(500).json({
-      error: "Database connection failed",
-      details: error.message,
-      environment: {
-        NODE_ENV: process.env.NODE_ENV,
-        DATABASE_NAME: process.env.DATABASE_NAME,
-        MONGODB_URI: process.env.MONGODB_URI ? "Set" : "Not set"
-      }
-    });
-  }
 });
 
 // Export the Express app for Vercel
