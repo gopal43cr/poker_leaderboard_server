@@ -1,0 +1,11 @@
+{
+  "name": "poker_leaderboard_server",
+  "version": "1.0.0",
+  "dependencies": {
+    "mongodb": "^5.0.0",
+    "dotenv": "^16.0.0"
+  },
+  "scripts": {
+    "start": "node index.js"
+  }
+}
